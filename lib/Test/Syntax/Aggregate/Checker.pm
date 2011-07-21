@@ -3,7 +3,7 @@ package Test::Syntax::Aggregate::Checker;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 NAME
 
@@ -59,6 +59,9 @@ $shebang;
 $script
 }
 EOS
+            my $dir = $_;
+            $dir =~ s/(?<=[\\\/])[^\\\/]+$//;
+            chdir $dir if $dir;
             {
                 no strict;
                 no warnings;
@@ -67,12 +70,19 @@ EOS
                 local *STDERR;
                 eval $eval;
             }
-            if ($@) {
+            my $err = $@;
+
+            # Don't want to run END blocks
+            require POSIX;
+
+            if ($err) {
                 warn "Can't compile $_: $@\n";
-                exit 1;
+                close STDERR;
+                close STDOUT;
+                POSIX::_exit(1);
             }
             else {
-                exit 0;
+                POSIX::_exit(0);
             }
         }
     }
