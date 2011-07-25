@@ -3,7 +3,7 @@ package Test::Syntax::Aggregate::Checker;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 NAME
 
@@ -25,6 +25,9 @@ forked process.  Prints "ok" if compilation succeed, or "not ok" otherwise.
 =cut
 
 sub run {
+    my $class = shift;
+    my %params = @_;
+
     autoflush STDOUT, 1;
     while (<STDIN>) {
         chomp;
@@ -62,15 +65,23 @@ EOS
             my $dir = $_;
             $dir =~ s/(?<=[\\\/])[^\\\/]+$//;
             chdir $dir if $dir;
+
+            my @warnings;
             {
                 no strict;
                 no warnings;
+                local $SIG{__WARN__} = sub { push @warnings, shift };
                 local *STDIN;
                 local *STDOUT;
                 local *STDERR;
                 eval $eval;
             }
             my $err = $@;
+
+            # Print warnings if there's an error or if hide_warnings is false
+            if ($err or not $params{hide_warnings}) {
+                print STDERR $_ for @warnings;
+            }
 
             # Don't want to run END blocks
             require POSIX;
